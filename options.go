@@ -16,12 +16,16 @@ type Options struct {
 
 func newOptions() *Options {
 	return &Options{
+		ctx:   context.Background(),
 		delay: true,
 	}
 }
 
 // WithContext allows you to specify a context for the locker. The context will be used for all operations of the locker.
 func WithContext(ctx context.Context) func(*Options) {
+	if ctx == nil {
+		panic("sets3lock: context cannot be nil")
+	}
 	return func(o *Options) {
 		o.ctx = ctx
 	}
