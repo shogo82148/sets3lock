@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -40,9 +41,13 @@ type Locker struct {
 	client            APIClient
 	bucket            string
 	key               string
-	etag              string
+	noPanic           bool
 	delay             bool
 	expireGracePeriod time.Duration
+
+	mu      sync.Mutex
+	etag    string
+	lastErr error
 }
 
 // New returns new [Locker].
@@ -78,6 +83,7 @@ func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, e
 		client:            client,
 		bucket:            bucket,
 		key:               key,
+		noPanic:           options.noPanic,
 		delay:             options.delay,
 		expireGracePeriod: options.expireGracePeriod,
 	}, nil
@@ -198,6 +204,17 @@ func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
 	return false, errors.New("sets3lock: failed to acquire lock")
 }
 
+// Lock for implements [sync.Locker].
+func (l *Locker) Lock() {
+	granted, err := l.LockWithErr(context.Background())
+	if err != nil {
+		l.bailout(err)
+	}
+	if !granted {
+		l.bailout(errors.New("sets3lock: failed to acquire lock"))
+	}
+}
+
 // UnlockWithErr unlocks. It removes the lock object from S3.
 func (l *Locker) UnlockWithErr(ctx context.Context) error {
 	_, err := l.client.DeleteObject(ctx, &s3.DeleteObjectInput{
@@ -206,4 +223,50 @@ func (l *Locker) UnlockWithErr(ctx context.Context) error {
 		IfMatch: &l.etag,
 	})
 	return err
+}
+
+// Unlock implements [sync.Locker].
+func (l *Locker) Unlock() {
+	err := l.UnlockWithErr(context.Background())
+	if err != nil {
+		l.bailout(err)
+	}
+}
+
+func (l *Locker) LastErr() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.lastErr
+}
+
+func (l *Locker) ClearLastErr() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.lastErr = nil
+}
+
+type bailoutErr struct {
+	err error
+}
+
+func (l *Locker) bailout(err error) {
+	l.mu.Lock()
+	l.lastErr = err
+	l.mu.Unlock()
+
+	if !l.noPanic {
+		panic(bailoutErr{err})
+	}
+}
+
+// Recover for [Locker.Lock]() and [Locker.Unlock()]() panic.
+func Recover(e any) error {
+	if e != nil {
+		b, ok := e.(bailoutErr)
+		if !ok {
+			panic(e)
+		}
+		return b.err
+	}
+	return nil
 }

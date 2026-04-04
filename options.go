@@ -5,6 +5,7 @@ import "time"
 // Options are for changing the behavior of the lock mechanism.
 type Options struct {
 	client            APIClient
+	noPanic           bool
 	delay             bool
 	expireGracePeriod time.Duration
 }
@@ -19,6 +20,14 @@ func newOptions() *Options {
 func WithAPIClient(client APIClient) func(*Options) {
 	return func(o *Options) {
 		o.client = client
+	}
+}
+
+// WithNoPanic changes the behavior so that it does not panic if an error occurs in the [Locker.Lock]() and [Locker.Unlock]() functions.
+// Check the [Locker.LastErr]() function to see if an error has occurred when WithNoPanic is specified.
+func WithNoPanic() func(opts *Options) {
+	return func(opts *Options) {
+		opts.noPanic = true
 	}
 }
 
