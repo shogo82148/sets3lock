@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -217,4 +218,28 @@ func TestLocker_Steal(t *testing.T) {
 	if err := locker.UnlockWithErr(ctx); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestLocker_LockerInterface(t *testing.T) {
+	ctx := t.Context()
+	client := &mockClient{
+		putObject: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			return &s3.PutObjectOutput{
+				ETag: aws.String("etag"),
+			}, nil
+		},
+		deleteObject: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+			return &s3.DeleteObjectOutput{}, nil
+		},
+	}
+
+	locker, err := New(ctx, "s3://bucket/key", WithAPIClient(client))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var l sync.Locker = locker
+
+	l.Lock()
+	defer l.Unlock()
 }
