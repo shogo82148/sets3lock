@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
+	"syscall"
 	"time"
 
 	"github.com/shogo82148/sets3lock"
@@ -15,6 +17,13 @@ import (
 var (
 	Version = "current"
 )
+
+var signals = []os.Signal{
+	syscall.SIGHUP,
+	syscall.SIGINT,
+	syscall.SIGTERM,
+	syscall.SIGQUIT,
+}
 
 func main() {
 	os.Exit(_main())
@@ -66,7 +75,7 @@ func _main() int {
 		fmt.Fprintf(os.Stderr, "sets3lock: failed to create locker: %v\n", err)
 		return 1
 	}
-	lockGranted, err := locker.LockWithErr(ctx)
+	lockGranted, err := lock(ctx, locker)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sets3lock: failed to acquire lock: %v\n", err)
 		return 1
@@ -78,17 +87,52 @@ func _main() int {
 		}
 		return 1
 	}
-	defer locker.Unlock()
+	defer func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := locker.UnlockWithErr(ctx); err != nil {
+			fmt.Fprintf(os.Stderr, "sets3lock: failed to release lock: %v\n", err)
+		}
+	}()
 
 	cmd := exec.CommandContext(ctx, flag.Arg(1), flag.Args()[2:]...)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	err = cmd.Run()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "sets3lock: unable to run command: %v\n", err)
+	if err := cmd.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "sets3lock: unable to start command: %v\n", err)
 		return 1
 	}
-	return 0
+	cmdCh := make(chan error, 1)
+	go func() {
+		cmdCh <- cmd.Wait()
+	}()
+
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, signals...)
+	defer signal.Stop(signalCh)
+
+	for {
+		select {
+		case err := <-cmdCh:
+			if code := cmd.ProcessState.ExitCode(); code != 0 {
+				return code
+			}
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "sets3lock: command exited with error: %v\n", err)
+				return 1
+			}
+			return 0
+		case s := <-signalCh:
+			if err := cmd.Process.Signal(s); err != nil {
+				fmt.Fprintf(os.Stderr, "sets3lock: failed to forward signal: %v\n", err)
+			}
+		}
+	}
+}
+
+func lock(ctx context.Context, locker *sets3lock.Locker) (bool, error) {
+	ctx, cancel := signal.NotifyContext(ctx, signals...)
+	defer cancel()
+	return locker.LockWithErr(ctx)
 }
