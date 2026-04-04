@@ -49,7 +49,9 @@ type Locker struct {
 func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, error) {
 	options := newOptions()
 	for _, opt := range opts {
-		opt(options)
+		if opt != nil {
+			opt(options)
+		}
 	}
 
 	client := options.client
