@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -163,5 +164,57 @@ func TestLocker_NoDelay(t *testing.T) {
 	}
 	if granted {
 		t.Fatal("unexpectedly acquired lock")
+	}
+}
+
+func TestLocker_Steal(t *testing.T) {
+	ctx := t.Context()
+	now := time.Now()
+
+	var count int
+	client := &mockClient{
+		putObject: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			count++
+			if count == 1 {
+				return nil, &mockError{code: "PreconditionFailed"}
+			}
+			if aws.ToString(params.IfMatch) != "etag1" {
+				t.Fatalf("unexpected IfMatch: %s", aws.ToString(params.IfMatch))
+			}
+			return &s3.PutObjectOutput{
+				ETag: aws.String("etag2"),
+			}, nil
+		},
+		headObject: func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
+			return &s3.HeadObjectOutput{
+				LastModified: aws.Time(now.Add(-10 * time.Second)),
+				ETag:         aws.String("etag1"),
+			}, nil
+		},
+		deleteObject: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
+			if aws.ToString(params.IfMatch) != "etag2" {
+				t.Fatalf("unexpected IfMatch: %s", aws.ToString(params.IfMatch))
+			}
+			return &s3.DeleteObjectOutput{}, nil
+		},
+	}
+
+	locker, err := New(ctx, "s3://bucket/key", WithAPIClient(client), WithExpireGracePeriod(10*time.Second))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test LockWithErr
+	granted, err := locker.LockWithErr(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !granted {
+		t.Fatal("failed to acquire lock")
+	}
+
+	// Test UnlockWithErr
+	if err := locker.UnlockWithErr(ctx); err != nil {
+		t.Fatal(err)
 	}
 }
