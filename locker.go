@@ -108,14 +108,13 @@ func (l *Locker) acquireLock(ctx context.Context, etag string) (bool, error) {
 	in := &s3.PutObjectInput{
 		Bucket:      &l.bucket,
 		Key:         &l.key,
-		IfNoneMatch: aws.String("*"),
-		ContentType: aws.String("application/json"),
+		ContentType: new("application/json"),
 		Body:        bytes.NewReader(infoJSON),
 	}
 	if etag != "" {
 		in.IfMatch = &etag
 	} else {
-		in.IfNoneMatch = aws.String("*")
+		in.IfNoneMatch = new("*")
 	}
 
 	out, err := l.client.PutObject(ctx, in)

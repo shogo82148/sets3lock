@@ -67,7 +67,7 @@ func TestLocker(t *testing.T) {
 				t.Fatalf("unexpected IfNoneMatch: %s", aws.ToString(params.IfNoneMatch))
 			}
 			return &s3.PutObjectOutput{
-				ETag: aws.String("etag"),
+				ETag: new("etag"),
 			}, nil
 		},
 		deleteObject: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
@@ -114,7 +114,7 @@ func TestLocker_Blocked(t *testing.T) {
 				return nil, &mockError{code: "PreconditionFailed"}
 			}
 			return &s3.PutObjectOutput{
-				ETag: aws.String("etag"),
+				ETag: new("etag"),
 			}, nil
 		},
 		headObject: func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
@@ -183,13 +183,13 @@ func TestLocker_Steal(t *testing.T) {
 				t.Fatalf("unexpected IfMatch: %s", aws.ToString(params.IfMatch))
 			}
 			return &s3.PutObjectOutput{
-				ETag: aws.String("etag2"),
+				ETag: new("etag2"),
 			}, nil
 		},
 		headObject: func(ctx context.Context, params *s3.HeadObjectInput, optFns ...func(*s3.Options)) (*s3.HeadObjectOutput, error) {
 			return &s3.HeadObjectOutput{
 				LastModified: aws.Time(now.Add(-10 * time.Second)),
-				ETag:         aws.String("etag1"),
+				ETag:         new("etag1"),
 			}, nil
 		},
 		deleteObject: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
@@ -225,7 +225,7 @@ func TestLocker_LockerInterface(t *testing.T) {
 	client := &mockClient{
 		putObject: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
 			return &s3.PutObjectOutput{
-				ETag: aws.String("etag"),
+				ETag: new("etag"),
 			}, nil
 		},
 		deleteObject: func(ctx context.Context, params *s3.DeleteObjectInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectOutput, error) {
