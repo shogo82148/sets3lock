@@ -142,3 +142,26 @@ func TestLocker_Blocked(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLocker_NoDelay(t *testing.T) {
+	ctx := t.Context()
+	client := &mockClient{
+		putObject: func(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error) {
+			return nil, &mockError{code: "PreconditionFailed"}
+		},
+	}
+
+	locker, err := New(ctx, "s3://bucket/key", WithDelay(false), WithAPIClient(client))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test LockWithErr
+	granted, err := locker.LockWithErr(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if granted {
+		t.Fatal("unexpectedly acquired lock")
+	}
+}
