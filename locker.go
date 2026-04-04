@@ -91,7 +91,7 @@ func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, e
 	}, nil
 }
 
-func (l *Locker) acquireLock(ctx context.Context) (bool, error) {
+func (l *Locker) acquireLock(ctx context.Context, etag string) (bool, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return false, err
@@ -105,48 +105,24 @@ func (l *Locker) acquireLock(ctx context.Context) (bool, error) {
 		return false, err
 	}
 
-	out, err := l.client.PutObject(ctx, &s3.PutObjectInput{
+	in := &s3.PutObjectInput{
 		Bucket:      &l.bucket,
 		Key:         &l.key,
 		IfNoneMatch: aws.String("*"),
 		ContentType: aws.String("application/json"),
 		Body:        bytes.NewReader(infoJSON),
-	})
-	if err == nil {
-		l.etag = aws.ToString(out.ETag)
-		return true, nil
 	}
-	if ae, ok := errors.AsType[smithy.APIError](err); ok {
-		if ae.ErrorCode() == "PreconditionFailed" {
-			return false, nil
-		}
-	}
-	return false, err
-}
-
-func (l *Locker) stealLock(ctx context.Context, etag string) (bool, error) {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return false, err
-	}
-	info := lockInfo{
-		ID:        id,
-		CreatedAt: time.Now(),
-	}
-	infoJSON, err := json.Marshal(info)
-	if err != nil {
-		return false, err
+	if etag != "" {
+		in.IfMatch = &etag
+	} else {
+		in.IfNoneMatch = aws.String("*")
 	}
 
-	out, err := l.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket:      &l.bucket,
-		Key:         &l.key,
-		IfMatch:     &etag,
-		ContentType: aws.String("application/json"),
-		Body:        bytes.NewReader(infoJSON),
-	})
+	out, err := l.client.PutObject(ctx, in)
 	if err == nil {
+		l.mu.Lock()
 		l.etag = aws.ToString(out.ETag)
+		l.mu.Unlock()
 		return true, nil
 	}
 	if ae, ok := errors.AsType[smithy.APIError](err); ok {
@@ -160,7 +136,7 @@ func (l *Locker) stealLock(ctx context.Context, etag string) (bool, error) {
 // LockWithErr try get lock.
 // The return value of bool indicates whether the lock has been released. If true, it is lock granted.
 func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
-	granted, err := l.acquireLock(ctx)
+	granted, err := l.acquireLock(ctx, "")
 	if err != nil {
 		return false, err
 	}
@@ -179,7 +155,7 @@ func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
 			Key:    &l.key,
 		})
 		if err != nil {
-			granted, err := l.acquireLock(ctx)
+			granted, err := l.acquireLock(ctx, "")
 			if err != nil {
 				return false, err
 			}
@@ -190,7 +166,7 @@ func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
 		}
 
 		if l.expireGracePeriod > 0 && time.Since(aws.ToTime(out.LastModified)) > l.expireGracePeriod {
-			granted, err := l.stealLock(ctx, aws.ToString(out.ETag))
+			granted, err := l.acquireLock(ctx, aws.ToString(out.ETag))
 			if err != nil {
 				return false, err
 			}
@@ -219,10 +195,13 @@ func (l *Locker) Lock() {
 
 // UnlockWithErr unlocks. It removes the lock object from S3.
 func (l *Locker) UnlockWithErr(ctx context.Context) error {
+	l.mu.Lock()
+	etag := l.etag
+	l.mu.Unlock()
 	_, err := l.client.DeleteObject(ctx, &s3.DeleteObjectInput{
 		Bucket:  &l.bucket,
 		Key:     &l.key,
-		IfMatch: &l.etag,
+		IfMatch: &etag,
 	})
 	return err
 }
