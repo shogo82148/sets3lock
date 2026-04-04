@@ -1,0 +1,21 @@
+# Please see the documentation for all configuration options:
+# https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      # grouping updates of AWS SDK for Go v2
+      aws-sdk:
+        patterns:
+          - github.com/aws/aws-sdk-go-v2
+          - github.com/aws/aws-sdk-go-v2/*
+
+  # Maintain dependencies for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
