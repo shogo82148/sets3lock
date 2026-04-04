@@ -38,6 +38,7 @@ type lockInfo struct {
 
 // Locker provides a Lock mechanism using Amazon S3.
 type Locker struct {
+	ctx               context.Context
 	client            APIClient
 	bucket            string
 	key               string
@@ -80,6 +81,7 @@ func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, e
 	}
 
 	return &Locker{
+		ctx:               options.ctx,
 		client:            client,
 		bucket:            bucket,
 		key:               key,
@@ -206,7 +208,7 @@ func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
 
 // Lock for implements [sync.Locker].
 func (l *Locker) Lock() {
-	granted, err := l.LockWithErr(context.Background())
+	granted, err := l.LockWithErr(l.ctx)
 	if err != nil {
 		l.bailout(err)
 	}
@@ -227,7 +229,7 @@ func (l *Locker) UnlockWithErr(ctx context.Context) error {
 
 // Unlock implements [sync.Locker].
 func (l *Locker) Unlock() {
-	err := l.UnlockWithErr(context.Background())
+	err := l.UnlockWithErr(l.ctx)
 	if err != nil {
 		l.bailout(err)
 	}

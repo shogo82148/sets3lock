@@ -1,9 +1,13 @@
 package sets3lock
 
-import "time"
+import (
+	"context"
+	"time"
+)
 
 // Options are for changing the behavior of the lock mechanism.
 type Options struct {
+	ctx               context.Context
 	client            APIClient
 	noPanic           bool
 	delay             bool
@@ -16,6 +20,13 @@ func newOptions() *Options {
 	}
 }
 
+// WithContext allows you to specify a context for the locker. The context will be used for all operations of the locker.
+func WithContext(ctx context.Context) func(*Options) {
+	return func(o *Options) {
+		o.ctx = ctx
+	}
+}
+
 // WithAPIClient allows you to specify a custom S3 client for the locker.
 func WithAPIClient(client APIClient) func(*Options) {
 	return func(o *Options) {
@@ -25,9 +36,9 @@ func WithAPIClient(client APIClient) func(*Options) {
 
 // WithNoPanic changes the behavior so that it does not panic if an error occurs in the [Locker.Lock]() and [Locker.Unlock]() functions.
 // Check the [Locker.LastErr]() function to see if an error has occurred when WithNoPanic is specified.
-func WithNoPanic() func(opts *Options) {
-	return func(opts *Options) {
-		opts.noPanic = true
+func WithNoPanic() func(*Options) {
+	return func(o *Options) {
+		o.noPanic = true
 	}
 }
 
@@ -48,8 +59,8 @@ func WithDelay(delay bool) func(*Options) {
 //
 // If the grace period is zero or negative, automatic reclamation is disabled;
 // expired locks will remain until removed by S3's TTL mechanism.
-func WithExpireGracePeriod(d time.Duration) func(opts *Options) {
-	return func(opts *Options) {
-		opts.expireGracePeriod = d
+func WithExpireGracePeriod(d time.Duration) func(*Options) {
+	return func(o *Options) {
+		o.expireGracePeriod = d
 	}
 }
