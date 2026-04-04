@@ -14,7 +14,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
 	"github.com/google/uuid"
+	"github.com/shogo82148/go-retry/v2"
 )
+
+var retryPolicy = &retry.Policy{
+	MinDelay: 100 * time.Millisecond,
+	MaxDelay: 5 * time.Second,
+	Jitter:   500 * time.Microsecond,
+}
 
 // APIClient is an interface for the S3 client used by Locker.
 type APIClient interface {
@@ -30,10 +37,12 @@ type lockInfo struct {
 
 // Locker provides a Lock mechanism using Amazon S3.
 type Locker struct {
-	client APIClient
-	bucket string
-	key    string
-	etag   string
+	client            APIClient
+	bucket            string
+	key               string
+	etag              string
+	delay             bool
+	expireGracePeriod time.Duration
 }
 
 // New returns new [Locker].
@@ -64,15 +73,15 @@ func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, e
 	}
 
 	return &Locker{
-		client: client,
-		bucket: bucket,
-		key:    key,
+		client:            client,
+		bucket:            bucket,
+		key:               key,
+		delay:             options.delay,
+		expireGracePeriod: options.expireGracePeriod,
 	}, nil
 }
 
-// LockWithErr try get lock.
-// The return value of bool indicates whether the lock has been released. If true, it is lock granted.
-func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
+func (l *Locker) acquireLock(ctx context.Context) (bool, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		return false, err
@@ -98,12 +107,93 @@ func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
 		return true, nil
 	}
 	if ae, ok := errors.AsType[smithy.APIError](err); ok {
-		if ae.ErrorCode() != "PreconditionFailed" {
-			return false, err
+		if ae.ErrorCode() == "PreconditionFailed" {
+			return false, nil
+		}
+	}
+	return false, err
+}
+
+func (l *Locker) stealLock(ctx context.Context, etag string) (bool, error) {
+	id, err := uuid.NewRandom()
+	if err != nil {
+		return false, err
+	}
+	info := lockInfo{
+		ID:        id,
+		CreatedAt: time.Now(),
+	}
+	infoJSON, err := json.Marshal(info)
+	if err != nil {
+		return false, err
+	}
+
+	out, err := l.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      &l.bucket,
+		Key:         &l.key,
+		IfMatch:     &etag,
+		ContentType: aws.String("application/json"),
+		Body:        bytes.NewReader(infoJSON),
+	})
+	if err == nil {
+		l.etag = aws.ToString(out.ETag)
+		return true, nil
+	}
+	if ae, ok := errors.AsType[smithy.APIError](err); ok {
+		if ae.ErrorCode() == "PreconditionFailed" {
+			return false, nil
+		}
+	}
+	return false, err
+}
+
+// LockWithErr try get lock.
+// The return value of bool indicates whether the lock has been released. If true, it is lock granted.
+func (l *Locker) LockWithErr(ctx context.Context) (bool, error) {
+	granted, err := l.acquireLock(ctx)
+	if err != nil {
+		return false, err
+	}
+	if !l.delay {
+		return granted, nil
+	}
+	if granted {
+		return true, nil
+	}
+
+	// wait until the lock is released
+	retrier := retryPolicy.Start(ctx)
+	for retrier.Continue() {
+		out, err := l.client.HeadObject(ctx, &s3.HeadObjectInput{
+			Bucket: &l.bucket,
+			Key:    &l.key,
+		})
+		if err != nil {
+			granted, err := l.acquireLock(ctx)
+			if err != nil {
+				return false, err
+			}
+			if granted {
+				return true, nil
+			}
+			continue
+		}
+
+		if l.expireGracePeriod > 0 && time.Since(aws.ToTime(out.LastModified)) > l.expireGracePeriod {
+			granted, err := l.stealLock(ctx, aws.ToString(out.ETag))
+			if err != nil {
+				return false, err
+			}
+			if granted {
+				return true, nil
+			}
 		}
 	}
 
-	return false, nil
+	if err := ctx.Err(); err != nil {
+		return false, err
+	}
+	return false, errors.New("sets3lock: failed to acquire lock")
 }
 
 // UnlockWithErr unlocks. It removes the lock object from S3.
