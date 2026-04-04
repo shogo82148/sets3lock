@@ -70,7 +70,7 @@ func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, e
 		return nil, errors.New("sets3lock: invalid URL: must start with s3://")
 	}
 	bucket, key, ok := strings.Cut(bucketAndKey, "/")
-	if !ok {
+	if !ok || bucket == "" || key == "" {
 		return nil, errors.New("sets3lock: invalid URL: must contain bucket and key")
 	}
 
