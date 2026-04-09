@@ -20,6 +20,15 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
+      - name: configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@ec61189d14ec14c8efccab744f656cffd0e33f37 # v6.1.0
+        continue-on-error: true
+        with:
+          aws-region: us-east-1
+          role-to-assume: arn:aws:iam::800728769629:role/sets3lock-TestRole6C9272DF-smFqtIJQOdRn
+
       - name: go test
+        env:
+          SETS3LOCK_TEST_BUCKET: sets3lock-800728769629-us-east-1-an
         run: |
           go test -race ./...
