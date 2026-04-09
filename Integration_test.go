@@ -34,9 +34,12 @@ func TestIntegration(t *testing.T) {
 				if err != nil {
 					t.Error(err)
 				}
-				_, err = locker.LockWithErr(ctx)
+				granted, err := locker.LockWithErr(ctx)
 				if err != nil {
 					t.Error(err)
+				}
+				if !granted {
+					t.Error("Failed to acquire lock")
 				}
 
 				t.Log("Lock acquired")
@@ -68,18 +71,24 @@ func TestIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = locker1.LockWithErr(ctx)
+		granted, err := locker1.LockWithErr(ctx)
 		if err != nil {
 			t.Error(err)
+		}
+		if !granted {
+			t.Error("Failed to acquire lock")
 		}
 
 		locker2, err := New(ctx, u, WithExpireGracePeriod(2*time.Second))
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, err = locker2.LockWithErr(ctx)
+		granted, err = locker2.LockWithErr(ctx)
 		if err != nil {
 			t.Error(err)
+		}
+		if !granted {
+			t.Error("Failed to acquire lock")
 		}
 
 		// Attempt to unlock the first locker, which should fail because it was stolen.
