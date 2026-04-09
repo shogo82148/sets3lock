@@ -1,0 +1,145 @@
+# Make sure to check the documentation at http://goreleaser.com
+version: 2
+before:
+  hooks:
+    - go mod download
+builds:
+  - id: "cli-amd64"
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/sets3lock
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+    binary: sets3lock
+    ldflags:
+      - -s -w
+      - -X main.Version={{.Version}}
+  - id: "cli-arm64"
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/sets3lock
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - arm64
+    binary: sets3lock
+    ldflags:
+      - -s -w
+      - -X main.Version={{.Version}}
+archives:
+  - ids:
+      - cli-amd64
+      - cli-arm64
+checksum:
+  name_template: "checksums.txt"
+snapshot:
+  version_template: "{{ .Tag }}-next"
+changelog:
+  use: github-native
+
+nfpms:
+  - id: package-amd64
+    ids:
+      - cli-amd64
+    homepage: https://github.com/shogo82148/sets3lock/
+    maintainer: ICHINOSE Shogo <shogo82148@gmail.com>
+    description: Distributed locking using Amazon S3
+    license: MIT
+    formats:
+      - apk
+      - deb
+      - rpm
+    release: 1
+    epoch: 0
+    bindir: /usr/bin
+  - id: package-arm64
+    ids:
+      - cli-arm64
+    homepage: https://github.com/shogo82148/sets3lock/
+    maintainer: ICHINOSE Shogo <shogo82148@gmail.com>
+    description: Distributed locking using Amazon S3
+    license: MIT
+    formats:
+      - apk
+      - deb
+      - rpm
+    release: 1
+    epoch: 0
+    bindir: /usr/bin
+
+blobs:
+  # Amazon Linux 2023
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-amd64]
+    directory: amazonlinux/2023/x86_64/sets3lock
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-arm64]
+    directory: amazonlinux/2023/aarch64/sets3lock
+
+  # AlmaLinux 8
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-amd64]
+    directory: almalinux/8/x86_64/sets3lock
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-arm64]
+    directory: almalinux/8/aarch64/sets3lock
+
+  # AlmaLinux 9
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-amd64]
+    directory: almalinux/9/x86_64/sets3lock
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-arm64]
+    directory: almalinux/9/aarch64/sets3lock
+
+  # AlmaLinux 10
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-amd64]
+    directory: almalinux/10/x86_64/sets3lock
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-arm64]
+    directory: almalinux/10/aarch64/sets3lock
+
+  # Rocky Linux 8
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-amd64]
+    directory: rockylinux/8/x86_64/sets3lock
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-arm64]
+    directory: rockylinux/8/aarch64/sets3lock
+
+  # Rocky Linux 9
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-amd64]
+    directory: rockylinux/9/x86_64/sets3lock
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-arm64]
+    directory: rockylinux/9/aarch64/sets3lock
+
+  # Rocky Linux 10
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-amd64]
+    directory: rockylinux/10/x86_64/sets3lock
+  - provider: s3
+    bucket: shogo82148-rpm-temporary
+    ids: [package-arm64]
+    directory: rockylinux/10/aarch64/sets3lock
