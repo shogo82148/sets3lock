@@ -25,8 +25,8 @@ go install github.com/shogo82148/sets3lock@latest
 $ sets3lock [-nNxX] s3://bucket/key program [args...]
 -n: No delay. If fn is locked by another process, sets3lock gives up.
 -N: (Default.) Delay. If fn is locked by another process, sets3lock waits until it can obtain a new lock.
--x: If fn cannot be update-item (or put-item) or locked, sets3lock exits zero.
--X: (Default.) If fn cannot be update-item (or put-item) or locked, sets3lock prints an error message and exits nonzero.
+-x: If lock object creation/update fails or the lock cannot be obtained, sets3lock exits zero.
+-X: (Default.) If lock object creation/update fails or the lock cannot be obtained, sets3lock prints an error message and exits nonzero.
 -version: show version
 -expire-grace-period: set expire grace period duration after TTL expiration
 ```
