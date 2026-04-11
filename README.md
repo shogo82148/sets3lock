@@ -16,7 +16,7 @@ without the need to manage additional infrastructure like Redis or ZooKeeper.
 go get github.com/shogo82148/cmd/sets3lock
 
 # use sets3lock as a library.
-go get github.com/shogo82148/sets3lock
+go install github.com/shogo82148/sets3lock@latest
 ```
 
 ## USAGE
