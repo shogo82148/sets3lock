@@ -36,7 +36,10 @@ import "github.com/shogo82148/sets3lock"
 
 func main() {
   ctx := context.Background()
-  l := sets3lock.New(ctx, "s3://bucket/key")
+  l, err := sets3lock.New(ctx, "s3://bucket/key")
+  if err != nil {
+    panic(err)
+  }
   if _, err := l.LockWithErr(ctx); err != nil {
     panic(err)
   }
