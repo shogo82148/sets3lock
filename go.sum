@@ -32,8 +32,8 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.7 h1:xbmJAnBbyYPkTzoCNCF/bpJ6
 github.com/aws/aws-sdk-go-v2/service/ssooidc v1.36.7/go.mod h1:Q5N6icH+KJZDLh+ESNwzdv6cZ6vLFF/egy3IOxWhmz4=
 github.com/aws/aws-sdk-go-v2/service/sts v1.43.4 h1:Np0vmL7op0Zs5xGacYMMX3v5O5pvZ46xhb5LwDgPj8M=
 github.com/aws/aws-sdk-go-v2/service/sts v1.43.4/go.mod h1:r8wkDOuLaaMFqFiYAb8dGY2A3gJCOujMc6CFOVC4Zhc=
-github.com/aws/smithy-go v1.27.1 h1:4T340VFndXtADGF52gYa1POyL7s9E4Z1OeZ1hCscIw8=
-github.com/aws/smithy-go v1.27.1/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
+github.com/aws/smithy-go v1.28.2 h1:myhcykQcatTul2B/zITjDk203G7t0awUAs1hVry5Bvg=
+github.com/aws/smithy-go v1.28.2/go.mod h1:YE2RhdIuDbA5E5bTdciG9KrW3+TiEONeUWCqxX9i1Fc=
 github.com/google/uuid v1.6.0 h1:NIvaJDMOsjHA8n1jAhLSgzrAzy1Hgr+hNrb57e+94F0=
 github.com/google/uuid v1.6.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/shogo82148/go-retry/v2 v2.0.2 h1:3dPwN8d8QjBNRocGlHvqSFkcmAG82X/hU7wAeZc0K84=
