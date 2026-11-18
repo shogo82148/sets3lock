@@ -51,6 +51,7 @@ jobs:
         env:
           SETS3LOCK_TEST_BUCKET: sets3lock
         run: |
+          aws s3 mb "s3://$SETS3LOCK_TEST_BUCKET"
           go test -race ./...
 
   goreleaser-check:
