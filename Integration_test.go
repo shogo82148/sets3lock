@@ -1,7 +1,6 @@
 package sets3lock
 
 import (
-	"context"
 	"crypto/rand"
 	"fmt"
 	"os"
@@ -9,14 +8,11 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/sts"
 )
 
 func TestIntegration(t *testing.T) {
-	if !hasAWSAccess(t) {
-		t.Skip("Skipping integration test due to lack of AWS access")
+	if testBucket() == "" {
+		t.Skip("SETS3LOCK_TEST_BUCKET environment variable is not set")
 	}
 
 	t.Run("Lock", func(t *testing.T) {
@@ -107,28 +103,4 @@ func TestIntegration(t *testing.T) {
 
 func testBucket() string {
 	return os.Getenv("SETS3LOCK_TEST_BUCKET")
-}
-
-func hasAWSAccess(t *testing.T) bool {
-	if testBucket() == "" {
-		t.Log("SETS3LOCK_TEST_BUCKET environment variable is not set")
-		return false
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	cfg, err := config.LoadDefaultConfig(ctx)
-	if err != nil {
-		t.Log(err)
-		return false
-	}
-
-	svc := sts.NewFromConfig(cfg)
-	_, err = svc.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
-	if err != nil {
-		t.Log(err)
-		return false
-	}
-	return true
 }
