@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Setup AWS Emulator
-        uses: shogo82148/actions-setup-aws-emulator@v0
+        uses: shogo82148/actions-setup-aws-emulator@v0.1.0
         with:
           aws-emulator-version: "1.0.508"
       - name: Check out code into the Go module directory
