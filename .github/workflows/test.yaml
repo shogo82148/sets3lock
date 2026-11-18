@@ -29,8 +29,6 @@ jobs:
           go-version: ${{ matrix.go }}
 
       - name: go test
-        env:
-          SETS3LOCK_TEST_BUCKET: sets3lock-800728769629-us-east-1-an
         run: |
           go test -race ./...
 
