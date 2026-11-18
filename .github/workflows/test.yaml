@@ -28,17 +28,28 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
-      - name: configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6.3.0
-        continue-on-error: true
-        with:
-          aws-region: us-east-1
-          role-to-assume: arn:aws:iam::800728769629:role/sets3lock-TestRole6C9272DF-smFqtIJQOdRn
+      - name: go test
+        run: |
+          go test -race ./...
 
+  aws-emulator:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup AWS Emulator
+        uses: shogo82148/actions-setup-aws-emulator@v0.1.0
+        with:
+          aws-emulator-version: "1.0.508"
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v7.0.1
+      - name: Set up Go
+        uses: actions/setup-go@v7.0.0
+        with:
+          go-version-file: go.mod
       - name: go test
         env:
-          SETS3LOCK_TEST_BUCKET: sets3lock-800728769629-us-east-1-an
+          SETS3LOCK_TEST_BUCKET: sets3lock
         run: |
+          aws s3 mb "s3://$SETS3LOCK_TEST_BUCKET"
           go test -race ./...
 
   goreleaser-check:
