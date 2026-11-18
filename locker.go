@@ -92,9 +92,8 @@ func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, e
 }
 
 func (l *Locker) acquireLock(ctx context.Context, etag string) (bool, error) {
-	id := uuid.NewV4()
 	info := lockInfo{
-		ID:        id,
+		ID:        uuid.NewV4(),
 		CreatedAt: time.Now(),
 	}
 	infoJSON, err := json.Marshal(info)
