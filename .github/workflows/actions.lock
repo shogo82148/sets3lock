@@ -8,12 +8,12 @@ workflows:
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-go@v7.0.0'
         - 'aws-actions/configure-aws-credentials@v6.3.0'
-        - 'goreleaser/goreleaser-action@v7.2.3'
+        - 'goreleaser/goreleaser-action@v7.3.0'
     '.github/workflows/test.yaml':
         - 'actions/checkout@v7.0.1'
         - 'actions/setup-go@v7.0.0'
         - 'aws-actions/configure-aws-credentials@v6.3.0'
-        - 'goreleaser/goreleaser-action@v7.2.3'
+        - 'goreleaser/goreleaser-action@v7.3.0'
 dependencies:
     'actions/attest-build-provenance@v4.2.2':
         ref: 'v4.2.2'
@@ -42,8 +42,8 @@ dependencies:
         commit: 'sha1-e1253824e5c10ff9df46874f81ed3ec929e19cfd'
         owner_id: 57468012
         repo_id: 220391287
-    'goreleaser/goreleaser-action@v7.2.3':
-        ref: 'v7.2.3'
-        commit: 'sha1-f06c13b6b1a9625abc9e6e439d9c05a8f2190e94'
+    'goreleaser/goreleaser-action@v7.3.0':
+        ref: 'v7.3.0'
+        commit: 'sha1-a4f02ab5355a589de60d917a659ce617ed19b3de'
         owner_id: 24697112
         repo_id: 209873006
