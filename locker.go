@@ -9,12 +9,12 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"uuid"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/smithy-go"
-	"github.com/google/uuid"
 	"github.com/shogo82148/go-retry/v2"
 )
 
@@ -92,10 +92,7 @@ func New(ctx context.Context, rawurl string, opts ...func(*Options)) (*Locker, e
 }
 
 func (l *Locker) acquireLock(ctx context.Context, etag string) (bool, error) {
-	id, err := uuid.NewRandom()
-	if err != nil {
-		return false, err
-	}
+	id := uuid.NewV4()
 	info := lockInfo{
 		ID:        id,
 		CreatedAt: time.Now(),
